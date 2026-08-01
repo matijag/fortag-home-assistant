@@ -56,6 +56,10 @@ tag such as `matijag/fortag:1.0.17-rc.1`. The moving `matijag/fortag:beta` tag
 points to the newest scanner beta. Beta builds never replace
 `matijag/fortag:latest`.
 
+The current coordinated testing pair is HACS integration `1.0.1b1` with scanner
+`matijag/fortag:1.0.17-rc.1`. The current stable scanner remains `1.0.16` through
+the `latest` tag.
+
 ## Remove
 
 1. Remove `fortag_scanner:` from `configuration.yaml`.
