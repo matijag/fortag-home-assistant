@@ -20,6 +20,58 @@ The scanner is available as the multi-architecture Docker image
 networking for local device discovery and a persistent volume for its SQLite
 database.
 
+## Run the scanner container
+
+Create a private directory for the MQTT credentials and a persistent directory
+for the scanner database:
+
+```bash
+mkdir -p "$HOME/fortag/data"
+touch "$HOME/fortag/fortag.env"
+chmod 600 "$HOME/fortag/fortag.env"
+```
+
+Open `$HOME/fortag/fortag.env` in an editor and add the MQTT account used by the
+scanner. Keeping the password in this file avoids placing it in shell history or
+the `docker run` command:
+
+```dotenv
+MQTT_USER=assistant
+MQTT_PASSWORD=replace-with-your-mqtt-password
+DB_PATH=/app/data/scanner.db
+```
+
+Start the scanner with the current beta image:
+
+```bash
+docker pull matijag/fortag:1.0.17-rc.1
+
+docker run -d \
+  --name fortag-scanner \
+  --network host \
+  --restart unless-stopped \
+  --env-file "$HOME/fortag/fortag.env" \
+  -v "$HOME/fortag/data:/app/data" \
+  matijag/fortag:1.0.17-rc.1 \
+  -db /app/data/scanner.db \
+  -mqtt tcp://localhost:1883
+```
+
+Host networking is required for local-network discovery. If the MQTT broker is
+not running on the Docker host, replace `localhost` with its reachable hostname
+or IP address. Pinning the immutable release-candidate tag keeps a test system
+on the same build; use `matijag/fortag:latest` only for the stable channel.
+
+Check startup and scan activity with:
+
+```bash
+docker logs --tail=100 -f fortag-scanner
+```
+
+Users with access to the Docker daemon can inspect container environment values
+and should be treated as root-equivalent. Never commit or share the populated
+environment file.
+
 ## Install with HACS
 
 Until Fortag is included in HACS's default repositories, add it as a custom
