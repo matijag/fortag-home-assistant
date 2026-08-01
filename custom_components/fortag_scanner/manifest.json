@@ -1,10 +1,10 @@
 {
   "domain": "fortag_scanner",
   "name": "Fortag Network Scanner",
-  "documentation": "https://github.com/matijag/fortag-home-assistant",
-  "issue_tracker": "https://github.com/matijag/fortag-home-assistant/issues",
-  "dependencies": ["mqtt", "panel_custom", "http", "frontend"],
   "codeowners": ["@matijag"],
-  "version": "1.0.0",
-  "iot_class": "local_push"
+  "dependencies": ["mqtt", "panel_custom", "http", "frontend"],
+  "documentation": "https://github.com/matijag/fortag-home-assistant",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/matijag/fortag-home-assistant/issues",
+  "version": "1.0.1"
 }

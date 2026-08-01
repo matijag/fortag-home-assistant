@@ -3,6 +3,7 @@ import json
 import logging
 import voluptuous as vol
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.components import mqtt, websocket_api, panel_custom, frontend
 from homeassistant.components.http import StaticPathConfig
@@ -10,6 +11,7 @@ from homeassistant.components.http import StaticPathConfig
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "fortag_scanner"
+CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Fortag Scanner component."""
@@ -100,7 +102,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         webcomponent_name="fortag-scanner-panel",
         sidebar_title="Network Scanner",
         sidebar_icon="mdi:shield-search",
-        module_url="/fortag_scanner/static/fortag-panel.js?v=1.0.5",
+        module_url="/fortag_scanner/static/fortag-panel.js?v=1.0.1",
         config={},
         require_admin=True,
     )
