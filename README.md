@@ -45,6 +45,17 @@ Install the available update from HACS and restart Home Assistant when prompted.
 The scanner container is versioned separately and should also be updated when a
 compatible release is published.
 
+## Beta testing
+
+Fortag beta releases are opt-in. In HACS, enable the Fortag integration's
+pre-release switch to receive versions such as `1.0.1b1`; leave it disabled to
+stay on stable releases.
+
+For coordinated testing, run the scanner with an immutable release-candidate
+tag such as `matijag/fortag:1.0.17-rc.1`. The moving `matijag/fortag:beta` tag
+points to the newest scanner beta. Beta builds never replace
+`matijag/fortag:latest`.
+
 ## Remove
 
 1. Remove `fortag_scanner:` from `configuration.yaml`.
@@ -57,7 +68,8 @@ Removing this integration does not delete the scanner's SQLite database.
 
 The integration listens for scanner state, progress, and security alerts under
 `fortag/scanner` and forwards panel commands such as scan, rename, acknowledge,
-and range changes back over MQTT.
+and range changes back over MQTT. Scanner state reports MQTT API version `1`
+and the scanner build version so compatibility is visible in the panel.
 
 ## Support
 

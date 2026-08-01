@@ -12,6 +12,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "fortag_scanner"
 CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
+SUPPORTED_MQTT_API_VERSION = 1
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Fortag Scanner component."""
@@ -31,6 +32,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             if msg.topic == "fortag/scanner/state":
                 _LOGGER.info("Received Fortag Scanner state update")
                 payload = json.loads(msg.payload)
+                api_version = payload.get("api_version")
+                if api_version != SUPPORTED_MQTT_API_VERSION:
+                    _LOGGER.warning(
+                        "Fortag scanner MQTT API version %s is not supported; expected %s",
+                        api_version,
+                        SUPPORTED_MQTT_API_VERSION,
+                    )
                 hass.data[DOMAIN]["latest_state"] = payload
                 return
 
@@ -102,7 +110,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         webcomponent_name="fortag-scanner-panel",
         sidebar_title="Network Scanner",
         sidebar_icon="mdi:shield-search",
-        module_url="/fortag_scanner/static/fortag-panel.js?v=1.0.1",
+        module_url="/fortag_scanner/static/fortag-panel.js?v=1.0.1b1",
         config={},
         require_admin=True,
     )
