@@ -3,6 +3,15 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.0.1b4
+
+- Added UI setup through Home Assistant Devices & services, including MQTT
+  discovery and single-entry enforcement.
+- Added automatic import for existing `fortag_scanner:` YAML installations.
+- Added clean MQTT subscription and sidebar-panel unloading.
+- Added a visible, non-blocking warning for incompatible scanner versions, MQTT
+  API versions, and missing backend capabilities.
+
 ## 1.0.1b3
 
 - Added a persistent current-hosts/all-known-hosts filter, defaulting to current

@@ -83,13 +83,16 @@ repository:
 4. Select **Integration** as the category and add the repository.
 5. Find **Fortag Network Scanner** in HACS and download it.
 6. Restart Home Assistant.
-7. Add the following to `configuration.yaml` and restart Home Assistant again:
-
-   ```yaml
-   fortag_scanner:
-   ```
+7. Open **Settings → Devices & services**. Select **Configure** on the discovered
+   Fortag scanner, or select **Add integration** and choose
+   **Fortag Network Scanner**.
 
 The **Network Scanner** panel will appear in the sidebar for administrators.
+No `configuration.yaml` change is required.
+
+Existing YAML installations migrate automatically when `fortag_scanner:` is
+present during the first restart on `1.0.1b4`. After Fortag appears under
+Devices & services, remove that YAML entry to complete the migration.
 
 ## Upgrade
 
@@ -100,7 +103,7 @@ compatible release is published.
 ## Beta testing
 
 Fortag beta releases are opt-in. In HACS, enable the Fortag integration's
-pre-release switch to receive versions such as `1.0.1b3`; leave it disabled to
+pre-release switch to receive versions such as `1.0.1b4`; leave it disabled to
 stay on stable releases.
 
 For coordinated testing, run the scanner with an immutable release-candidate
@@ -108,15 +111,16 @@ tag such as `matijag/fortag:1.0.17-rc.2`. The moving `matijag/fortag:beta` tag
 points to the newest scanner beta. Beta builds never replace
 `matijag/fortag:latest`.
 
-The next coordinated testing pair is HACS integration `1.0.1b3` with scanner
+The next coordinated testing pair is HACS integration `1.0.1b4` with scanner
 `matijag/fortag:1.0.17-rc.2`. The current stable scanner remains `1.0.16` through
 the `latest` tag.
 
 ## Remove
 
-1. Remove `fortag_scanner:` from `configuration.yaml`.
-2. Remove the integration through HACS.
-3. Restart Home Assistant.
+1. Remove Fortag from **Settings → Devices & services**.
+2. Remove any legacy `fortag_scanner:` entry from `configuration.yaml`.
+3. Remove the integration through HACS.
+4. Restart Home Assistant.
 
 Removing this integration does not delete the scanner's SQLite database.
 

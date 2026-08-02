@@ -1,0 +1,17 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Fortag Network Scanner is already configured."
+    },
+    "step": {
+      "confirm": {
+        "description": "Fortag scanner traffic was discovered on the configured MQTT broker. Add the Network Scanner panel?",
+        "title": "Fortag scanner discovered"
+      },
+      "user": {
+        "description": "Add the Fortag Network Scanner panel. The scanner must use the same MQTT broker as Home Assistant.",
+        "title": "Set up Fortag Network Scanner"
+      }
+    }
+  }
+}

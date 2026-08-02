@@ -1,35 +1,91 @@
 """The Fortag Network Scanner integration."""
 import json
 import logging
+
 import voluptuous as vol
+from homeassistant.components import frontend, mqtt, panel_custom, websocket_api
+from homeassistant.components.http import StaticPathConfig
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.components import mqtt, websocket_api, panel_custom, frontend
-from homeassistant.components.http import StaticPathConfig
+
+from .const import DOMAIN, SUPPORTED_MQTT_API_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "fortag_scanner"
 CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
-SUPPORTED_MQTT_API_VERSION = 1
+PANEL_URL = "fortag-scanner"
+STATE_TOPIC = "fortag/scanner/state"
+PROGRESS_TOPIC = "fortag/scanner/progress"
+ALERT_TOPIC = "fortag/scanner/alert"
+
+
+def _integration_data(hass: HomeAssistant) -> dict:
+    """Return shared runtime data, creating it when necessary."""
+    return hass.data.setdefault(
+        DOMAIN,
+        {
+            "latest_state": None,
+            "latest_progress": {"status": "idle", "target": ""},
+            "unsubscribers": [],
+            "globals_registered": False,
+        },
+    )
+
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Fortag Scanner component."""
-    
+    """Set up global resources and import legacy YAML configuration."""
+    data = _integration_data(hass)
+
+    if not data["globals_registered"]:
+        await hass.http.async_register_static_paths(
+            [
+                StaticPathConfig(
+                    "/fortag_scanner/static",
+                    hass.config.path("custom_components/fortag_scanner/www"),
+                    True,
+                )
+            ]
+        )
+
+        websocket_api.async_register_command(hass, websocket_get_state)
+        websocket_api.async_register_command(hass, websocket_rename_host)
+        websocket_api.async_register_command(hass, websocket_acknowledge)
+        websocket_api.async_register_command(hass, websocket_set_range)
+        websocket_api.async_register_command(hass, websocket_scan_now)
+        data["globals_registered"] = True
+
+    if DOMAIN in config:
+        _LOGGER.warning(
+            "Importing legacy Fortag YAML configuration; remove 'fortag_scanner:' "
+            "from configuration.yaml after the config entry is created"
+        )
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": SOURCE_IMPORT},
+                data={},
+            )
+        )
+
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Fortag from a config entry."""
     _LOGGER.info("--- INITIALIZING FORTAG NETWORK SCANNER ---")
-    
-    if DOMAIN not in hass.data:
-        hass.data[DOMAIN] = {
-            "latest_state": None,
-            "latest_progress": {"status": "idle", "target": ""}
-        }
+    data = _integration_data(hass)
+
+    if not await mqtt.async_wait_for_mqtt_client(hass):
+        raise ConfigEntryNotReady("Home Assistant MQTT client is not available")
 
     async def message_received(msg):
         """Handle new MQTT messages."""
         try:
             # Handle state
-            if msg.topic == "fortag/scanner/state":
+            if msg.topic == STATE_TOPIC:
                 _LOGGER.info("Received Fortag Scanner state update")
                 payload = json.loads(msg.payload)
                 api_version = payload.get("api_version")
@@ -39,19 +95,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                         api_version,
                         SUPPORTED_MQTT_API_VERSION,
                     )
-                hass.data[DOMAIN]["latest_state"] = payload
+                data["latest_state"] = payload
                 return
 
             # Handle progress
-            if msg.topic == "fortag/scanner/progress":
+            if msg.topic == PROGRESS_TOPIC:
                 payload = json.loads(msg.payload)
-                hass.data[DOMAIN]["latest_progress"] = payload
+                data["latest_progress"] = payload
                 # Broadcast progress to all WS clients
                 hass.bus.async_fire("fortag_scanner_progress", payload)
                 return
 
             # Handle alerts
-            if msg.topic == "fortag/scanner/alert":
+            if msg.topic == ALERT_TOPIC:
                 payload = json.loads(msg.payload)
                 alert_type = payload.get("type")
                 mac = payload.get("mac")
@@ -82,40 +138,45 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         except Exception as e:
             _LOGGER.error("CRITICAL error in Fortag MQTT listener: %s", e)
 
-    # Subscriptions
-    await mqtt.async_subscribe(hass, "fortag/scanner/alert", message_received)
-    await mqtt.async_subscribe(hass, "fortag/scanner/state", message_received)
-    await mqtt.async_subscribe(hass, "fortag/scanner/progress", message_received)
-
-    # Static Path
-    await hass.http.async_register_static_paths([
-        StaticPathConfig(
-            "/fortag_scanner/static",
-            hass.config.path("custom_components/fortag_scanner/www"),
-            True,
+    unsubscribers = []
+    try:
+        unsubscribers.extend(
+            [
+                await mqtt.async_subscribe(hass, ALERT_TOPIC, message_received),
+                await mqtt.async_subscribe(hass, STATE_TOPIC, message_received),
+                await mqtt.async_subscribe(hass, PROGRESS_TOPIC, message_received),
+            ]
         )
-    ])
 
-    # WebSocket Commands
-    websocket_api.async_register_command(hass, websocket_get_state)
-    websocket_api.async_register_command(hass, websocket_rename_host)
-    websocket_api.async_register_command(hass, websocket_acknowledge)
-    websocket_api.async_register_command(hass, websocket_set_range)
-    websocket_api.async_register_command(hass, websocket_scan_now)
+        await panel_custom.async_register_panel(
+            hass,
+            frontend_url_path=PANEL_URL,
+            webcomponent_name="fortag-scanner-panel",
+            sidebar_title="Network Scanner",
+            sidebar_icon="mdi:shield-search",
+            module_url="/fortag_scanner/static/fortag-panel.js?v=1.0.1b4",
+            config={},
+            require_admin=True,
+        )
+    except Exception:
+        for unsubscribe in unsubscribers:
+            unsubscribe()
+        raise
 
-    # Register Sidebar Panel
-    await panel_custom.async_register_panel(
-        hass,
-        frontend_url_path="fortag-scanner",
-        webcomponent_name="fortag-scanner-panel",
-        sidebar_title="Network Scanner",
-        sidebar_icon="mdi:shield-search",
-        module_url="/fortag_scanner/static/fortag-panel.js?v=1.0.1b3",
-        config={},
-        require_admin=True,
-    )
+    data["unsubscribers"] = unsubscribers
 
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a Fortag config entry."""
+    data = _integration_data(hass)
+    for unsubscribe in data["unsubscribers"]:
+        unsubscribe()
+    data["unsubscribers"] = []
+    frontend.async_remove_panel(hass, PANEL_URL)
+    return True
+
 
 @websocket_api.websocket_command({
     "type": "fortag_scanner/get_state",
