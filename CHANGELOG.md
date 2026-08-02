@@ -3,6 +3,11 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.0.1b2
+
+- Added ascending and descending host sorting by name, numeric IP address,
+  first-detected time, and last-detected time.
+
 ## 1.0.1b1
 
 - Added MQTT API version 1 compatibility checking.
