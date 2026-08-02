@@ -107,13 +107,18 @@ pre-release switch to receive versions such as `1.0.1b5`; leave it disabled to
 stay on stable releases.
 
 For coordinated testing, run the scanner with an immutable release-candidate
-tag such as `matijag/fortag:1.0.17-rc.2`. The moving `matijag/fortag:beta` tag
+tag such as `matijag/fortag:1.0.17-rc.3`. The moving `matijag/fortag:beta` tag
 points to the newest scanner beta. Beta builds never replace
 `matijag/fortag:latest`.
 
-The next coordinated testing pair is HACS integration `1.0.1b5` with scanner
-`matijag/fortag:1.0.17-rc.2`. The current stable scanner remains `1.0.16` through
+The current coordinated testing pair is HACS integration `1.0.1b5` with scanner
+`matijag/fortag:1.0.17-rc.3`. The current stable scanner remains `1.0.16` through
 the `latest` tag.
+
+Scanner `1.0.17-rc.3` upgrades existing unversioned SQLite databases in place
+to schema version `1`. It publishes the migrated database state and its compiled
+scanner and schema versions before starting the first scan, so Home Assistant
+does not temporarily display a retained payload from an older container.
 
 ## Remove
 
@@ -129,7 +134,9 @@ Removing this integration does not delete the scanner's SQLite database.
 The integration listens for scanner state, progress, and security alerts under
 `fortag/scanner` and forwards panel commands such as scan, rename, acknowledge,
 and range changes back over MQTT. Scanner state reports MQTT API version `1`
-and the scanner build version so compatibility is visible in the panel.
+the scanner build version so compatibility is visible in the panel. Scanner
+`1.0.17-rc.3` also reports `schema_version: 1`. This is an additive MQTT API v1
+field and is ignored safely by integrations that do not use it.
 
 The host list defaults to devices identified in the latest scan and can be
 switched to all historically known devices. The chosen host view, sort field,

@@ -3,6 +3,13 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## Scanner 1.0.17-rc.3 compatibility
+
+- Updated the documented beta pairing to HACS integration `1.0.1b5` and scanner
+  `1.0.17-rc.3`.
+- Documented the scanner's pre-scan retained-state publication and additive
+  MQTT `schema_version` field.
+
 ## 1.0.1b5
 
 - Fixed config-flow loading on Home Assistant versions that do not export the
