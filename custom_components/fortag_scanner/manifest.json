@@ -10,5 +10,5 @@
   "issue_tracker": "https://github.com/matijag/fortag-home-assistant/issues",
   "mqtt": ["fortag/scanner/state"],
   "single_config_entry": true,
-  "version": "1.0.1b4"
+  "version": "1.0.1b5"
 }

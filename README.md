@@ -91,7 +91,7 @@ The **Network Scanner** panel will appear in the sidebar for administrators.
 No `configuration.yaml` change is required.
 
 Existing YAML installations migrate automatically when `fortag_scanner:` is
-present during the first restart on `1.0.1b4`. After Fortag appears under
+present during the first restart on `1.0.1b5`. After Fortag appears under
 Devices & services, remove that YAML entry to complete the migration.
 
 ## Upgrade
@@ -103,7 +103,7 @@ compatible release is published.
 ## Beta testing
 
 Fortag beta releases are opt-in. In HACS, enable the Fortag integration's
-pre-release switch to receive versions such as `1.0.1b4`; leave it disabled to
+pre-release switch to receive versions such as `1.0.1b5`; leave it disabled to
 stay on stable releases.
 
 For coordinated testing, run the scanner with an immutable release-candidate
@@ -111,7 +111,7 @@ tag such as `matijag/fortag:1.0.17-rc.2`. The moving `matijag/fortag:beta` tag
 points to the newest scanner beta. Beta builds never replace
 `matijag/fortag:latest`.
 
-The next coordinated testing pair is HACS integration `1.0.1b4` with scanner
+The next coordinated testing pair is HACS integration `1.0.1b5` with scanner
 `matijag/fortag:1.0.17-rc.2`. The current stable scanner remains `1.0.16` through
 the `latest` tag.
 
@@ -142,6 +142,18 @@ Report integration and panel problems through the
 [GitHub issue tracker](https://github.com/matijag/fortag-home-assistant/issues).
 Do not include MQTT passwords, private network inventories, or unredacted scan
 results in issue reports.
+
+For temporary setup diagnostics, add the following to `configuration.yaml` and
+restart Home Assistant:
+
+```yaml
+logger:
+  logs:
+    custom_components.fortag_scanner: debug
+```
+
+The resulting lifecycle messages show whether the config flow loaded, MQTT was
+available, topic subscriptions completed, and the sidebar panel registered.
 
 ## Licensing
 

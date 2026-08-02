@@ -3,6 +3,13 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.0.1b5
+
+- Fixed config-flow loading on Home Assistant versions that do not export the
+  newer `ConfigFlowResult` typing helper.
+- Added integration lifecycle logging for config-flow startup, MQTT readiness,
+  topic subscription, panel registration, unloading, and setup failures.
+
 ## 1.0.1b4
 
 - Added UI setup through Home Assistant Devices & services, including MQTT

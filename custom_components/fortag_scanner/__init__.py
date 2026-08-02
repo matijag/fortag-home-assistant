@@ -37,6 +37,7 @@ def _integration_data(hass: HomeAssistant) -> dict:
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up global resources and import legacy YAML configuration."""
+    _LOGGER.info("Loading Fortag integration")
     data = _integration_data(hass)
 
     if not data["globals_registered"]:
@@ -56,6 +57,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         websocket_api.async_register_command(hass, websocket_set_range)
         websocket_api.async_register_command(hass, websocket_scan_now)
         data["globals_registered"] = True
+        _LOGGER.debug("Registered Fortag static path and WebSocket commands")
 
     if DOMAIN in config:
         _LOGGER.warning(
@@ -75,11 +77,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Fortag from a config entry."""
-    _LOGGER.info("--- INITIALIZING FORTAG NETWORK SCANNER ---")
+    _LOGGER.info("Setting up Fortag config entry %s", entry.entry_id)
     data = _integration_data(hass)
 
     if not await mqtt.async_wait_for_mqtt_client(hass):
+        _LOGGER.warning("Fortag setup is waiting for the Home Assistant MQTT client")
         raise ConfigEntryNotReady("Home Assistant MQTT client is not available")
+
+    _LOGGER.debug("Home Assistant MQTT client is available to Fortag")
 
     async def message_received(msg):
         """Handle new MQTT messages."""
@@ -135,8 +140,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                             "notification_id": f"fortag_new_port_{mac}_{port}",
                         }
                     )
-        except Exception as e:
-            _LOGGER.error("CRITICAL error in Fortag MQTT listener: %s", e)
+        except Exception:
+            _LOGGER.exception("Error handling Fortag MQTT message on %s", msg.topic)
 
     unsubscribers = []
     try:
@@ -147,6 +152,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 await mqtt.async_subscribe(hass, PROGRESS_TOPIC, message_received),
             ]
         )
+        _LOGGER.info(
+            "Subscribed to Fortag MQTT topics: %s, %s, %s",
+            STATE_TOPIC,
+            PROGRESS_TOPIC,
+            ALERT_TOPIC,
+        )
 
         await panel_custom.async_register_panel(
             hass,
@@ -154,13 +165,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             webcomponent_name="fortag-scanner-panel",
             sidebar_title="Network Scanner",
             sidebar_icon="mdi:shield-search",
-            module_url="/fortag_scanner/static/fortag-panel.js?v=1.0.1b4",
+            module_url="/fortag_scanner/static/fortag-panel.js?v=1.0.1b5",
             config={},
             require_admin=True,
         )
+        _LOGGER.info("Registered Fortag sidebar panel at /%s", PANEL_URL)
     except Exception:
         for unsubscribe in unsubscribers:
             unsubscribe()
+        _LOGGER.exception("Failed to set up Fortag config entry %s", entry.entry_id)
         raise
 
     data["unsubscribers"] = unsubscribers
@@ -175,6 +188,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         unsubscribe()
     data["unsubscribers"] = []
     frontend.async_remove_panel(hass, PANEL_URL)
+    _LOGGER.info("Unloaded Fortag config entry %s", entry.entry_id)
     return True
 
 
