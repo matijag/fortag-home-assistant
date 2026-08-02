@@ -3,6 +3,13 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.0.1b3
+
+- Added a persistent current-hosts/all-known-hosts filter, defaulting to current
+  hosts.
+- Persisted the selected host filter, sort field, and sort direction in the
+  browser.
+
 ## 1.0.1b2
 
 - Added ascending and descending host sorting by name, numeric IP address,

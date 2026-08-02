@@ -44,7 +44,7 @@ DB_PATH=/app/data/scanner.db
 Start the scanner with the current beta image:
 
 ```bash
-docker pull matijag/fortag:1.0.17-rc.1
+docker pull matijag/fortag:1.0.17-rc.2
 
 docker run -d \
   --name fortag-scanner \
@@ -52,7 +52,7 @@ docker run -d \
   --restart unless-stopped \
   --env-file "$HOME/fortag/fortag.env" \
   -v "$HOME/fortag/data:/app/data" \
-  matijag/fortag:1.0.17-rc.1 \
+  matijag/fortag:1.0.17-rc.2 \
   -db /app/data/scanner.db \
   -mqtt tcp://localhost:1883
 ```
@@ -100,16 +100,16 @@ compatible release is published.
 ## Beta testing
 
 Fortag beta releases are opt-in. In HACS, enable the Fortag integration's
-pre-release switch to receive versions such as `1.0.1b1`; leave it disabled to
+pre-release switch to receive versions such as `1.0.1b3`; leave it disabled to
 stay on stable releases.
 
 For coordinated testing, run the scanner with an immutable release-candidate
-tag such as `matijag/fortag:1.0.17-rc.1`. The moving `matijag/fortag:beta` tag
+tag such as `matijag/fortag:1.0.17-rc.2`. The moving `matijag/fortag:beta` tag
 points to the newest scanner beta. Beta builds never replace
 `matijag/fortag:latest`.
 
-The current coordinated testing pair is HACS integration `1.0.1b2` with scanner
-`matijag/fortag:1.0.17-rc.1`. The current stable scanner remains `1.0.16` through
+The next coordinated testing pair is HACS integration `1.0.1b3` with scanner
+`matijag/fortag:1.0.17-rc.2`. The current stable scanner remains `1.0.16` through
 the `latest` tag.
 
 ## Remove
@@ -126,6 +126,11 @@ The integration listens for scanner state, progress, and security alerts under
 `fortag/scanner` and forwards panel commands such as scan, rename, acknowledge,
 and range changes back over MQTT. Scanner state reports MQTT API version `1`
 and the scanner build version so compatibility is visible in the panel.
+
+The host list defaults to devices identified in the latest scan and can be
+switched to all historically known devices. The chosen host view, sort field,
+and sort direction persist in that browser across reloads and Home Assistant
+restarts; preferences are not synchronized between browsers or user profiles.
 
 ## Support
 
