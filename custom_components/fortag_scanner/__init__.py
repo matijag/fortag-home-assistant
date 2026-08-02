@@ -1,6 +1,7 @@
 """The Fortag Network Scanner integration."""
 import json
 import logging
+from urllib.parse import urlencode
 
 import voluptuous as vol
 from homeassistant.components import frontend, mqtt, panel_custom, websocket_api
@@ -20,6 +21,16 @@ PANEL_URL = "fortag-scanner"
 STATE_TOPIC = "fortag/scanner/state"
 PROGRESS_TOPIC = "fortag/scanner/progress"
 ALERT_TOPIC = "fortag/scanner/alert"
+
+
+def _panel_link(mac: str, port: int | None = None, protocol: str | None = None) -> str:
+    """Build a relative panel deep link for a host or port alert."""
+    query: dict[str, str | int] = {"mac": mac}
+    if port is not None:
+        query["port"] = port
+    if protocol:
+        query["protocol"] = protocol
+    return f"/{PANEL_URL}?{urlencode(query)}"
 
 
 def _integration_data(hass: HomeAssistant) -> dict:
@@ -119,11 +130,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 
                 if alert_type == "new_host":
                     ip = payload.get("ip", "unknown")
+                    panel_link = _panel_link(mac)
                     await hass.services.async_call(
                         "persistent_notification",
                         "create",
                         {
-                            "message": f"New device detected on network: {ip} ({mac})",
+                            "message": (
+                                f"New device detected on network: {ip} ({mac})\n\n"
+                                f"[Open in Network Scanner]({panel_link})"
+                            ),
                             "title": "Security Alert: New Host",
                             "notification_id": f"fortag_new_host_{mac}",
                         }
@@ -131,11 +146,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 elif alert_type == "new_port":
                     port = payload.get("port")
                     proto = payload.get("protocol")
+                    panel_link = _panel_link(mac, port, proto)
                     await hass.services.async_call(
                         "persistent_notification",
                         "create",
                         {
-                            "message": f"New open port detected on {mac}: {port}/{proto}",
+                            "message": (
+                                f"New open port detected on {mac}: {port}/{proto}\n\n"
+                                f"[Open in Network Scanner]({panel_link})"
+                            ),
                             "title": "Security Alert: New Port",
                             "notification_id": f"fortag_new_port_{mac}_{port}",
                         }
@@ -165,7 +184,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             webcomponent_name="fortag-scanner-panel",
             sidebar_title="Network Scanner",
             sidebar_icon="mdi:shield-search",
-            module_url="/fortag_scanner/static/fortag-panel.js?v=1.0.1b5",
+            module_url="/fortag_scanner/static/fortag-panel.js?v=1.0.1b6",
             config={},
             require_admin=True,
         )

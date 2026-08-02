@@ -3,6 +3,13 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.0.1b6
+
+- Added links from new-host and new-port notifications to the matching Network
+  Scanner entry.
+- Added validated host and port deep links that reveal, expand, highlight, and
+  scroll to the affected entry after scanner state loads.
+
 ## Scanner 1.0.17-rc.3 compatibility
 
 - Updated the documented beta pairing to HACS integration `1.0.1b5` and scanner

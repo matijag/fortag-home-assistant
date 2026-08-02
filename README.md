@@ -103,7 +103,7 @@ compatible release is published.
 ## Beta testing
 
 Fortag beta releases are opt-in. In HACS, enable the Fortag integration's
-pre-release switch to receive versions such as `1.0.1b5`; leave it disabled to
+pre-release switch to receive versions such as `1.0.1b6`; leave it disabled to
 stay on stable releases.
 
 For coordinated testing, run the scanner with an immutable release-candidate
@@ -111,7 +111,7 @@ tag such as `matijag/fortag:1.0.17-rc.3`. The moving `matijag/fortag:beta` tag
 points to the newest scanner beta. Beta builds never replace
 `matijag/fortag:latest`.
 
-The current coordinated testing pair is HACS integration `1.0.1b5` with scanner
+The current coordinated testing pair is HACS integration `1.0.1b6` with scanner
 `matijag/fortag:1.0.17-rc.3`. The current stable scanner remains `1.0.16` through
 the `latest` tag.
 
@@ -142,6 +142,11 @@ The host list defaults to devices identified in the latest scan and can be
 switched to all historically known devices. The chosen host view, sort field,
 and sort direction persist in that browser across reloads and Home Assistant
 restarts; preferences are not synchronized between browsers or user profiles.
+
+New-host and new-port notifications include an **Open in Network Scanner**
+link. It opens the matching host, includes historical hosts when needed,
+expands and highlights the entry, and highlights the affected port for port
+alerts.
 
 ## Support
 
