@@ -184,7 +184,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             webcomponent_name="fortag-scanner-panel",
             sidebar_title="Network Scanner",
             sidebar_icon="mdi:shield-search",
-            module_url="/fortag_scanner/static/fortag-panel.js?v=1.0.1b6",
+            module_url="/fortag_scanner/static/fortag-panel.js?v=1.1.0",
             config={},
             require_admin=True,
         )

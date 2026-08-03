@@ -3,6 +3,21 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.1.0
+
+- Added UI setup through Devices & services, MQTT discovery, legacy YAML
+  migration, and clean config-entry unloading.
+- Added sorting by name, numeric IP address, first detection, and last detection
+  in both directions.
+- Added persistent current-host and all-known-host views.
+- Added compatibility warnings for scanner versions, MQTT API versions, and
+  missing backend capabilities.
+- Fixed config-flow loading on Home Assistant releases without the
+  `ConfigFlowResult` typing export and added lifecycle diagnostics.
+- Added notification links that reveal, expand, highlight, and scroll to the
+  affected host or port.
+- Promoted scanner `1.0.17` as the stable compatible backend.
+
 ## 1.0.1b6
 
 - Added links from new-host and new-port notifications to the matching Network

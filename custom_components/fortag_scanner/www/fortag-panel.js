@@ -596,7 +596,7 @@ var jt = Object.defineProperty, _ = (n, t, e, s) => {
     (o = n[i]) && (r = o(t, e, r) || r);
   return r && jt(t, e, r), r;
 };
-const lt = "fortag.sortField", ht = "fortag.sortDirection", dt = "fortag.currentHostsOnly", pt = "1.0.1b6", ut = 1, D = "1.0.17-rc.2", J = class J extends N {
+const lt = "fortag.sortField", ht = "fortag.sortDirection", dt = "fortag.currentHostsOnly", pt = "1.1.0", ut = 1, D = "1.0.17", J = class J extends N {
   constructor() {
     super(...arguments), this.narrow = !1, this._scanData = null, this._progress = { status: "idle", target: "" }, this._scanning = !1, this._expandedMAC = null, this._editingRange = !1, this._sortBy = "ip", this._sortDirection = "asc", this._currentHostsOnly = !0, this._highlightMAC = null, this._highlightPort = null, this._highlightProtocol = null, this._deepLink = null, this._deepLinkApplied = !1;
   }

@@ -102,20 +102,20 @@ compatible release is published.
 
 ## Beta testing
 
-Fortag beta releases are opt-in. In HACS, enable the Fortag integration's
-pre-release switch to receive versions such as `1.0.1b6`; leave it disabled to
-stay on stable releases.
+Fortag beta releases are opt-in. Enable the integration's pre-release switch in
+HACS only when testing a documented beta pair; leave it disabled to receive
+stable releases such as `1.1.0`.
 
 For coordinated testing, run the scanner with an immutable release-candidate
 tag such as `matijag/fortag:1.0.17-rc.3`. The moving `matijag/fortag:beta` tag
 points to the newest scanner beta. Beta builds never replace
 `matijag/fortag:latest`.
 
-The current coordinated testing pair is HACS integration `1.0.1b6` with scanner
-`matijag/fortag:1.0.17-rc.3`. The current stable scanner remains `1.0.16` through
-the `latest` tag.
+The current stable pair is HACS integration `1.1.0` with scanner
+`matijag/fortag:1.0.17`. The `1.0` and `latest` Docker tags point to the same
+stable scanner build.
 
-Scanner `1.0.17-rc.3` upgrades existing unversioned SQLite databases in place
+Scanner `1.0.17` upgrades existing unversioned SQLite databases in place
 to schema version `1`. It publishes the migrated database state and its compiled
 scanner and schema versions before starting the first scan, so Home Assistant
 does not temporarily display a retained payload from an older container.
@@ -135,7 +135,7 @@ The integration listens for scanner state, progress, and security alerts under
 `fortag/scanner` and forwards panel commands such as scan, rename, acknowledge,
 and range changes back over MQTT. Scanner state reports MQTT API version `1`
 the scanner build version so compatibility is visible in the panel. Scanner
-`1.0.17-rc.3` also reports `schema_version: 1`. This is an additive MQTT API v1
+`1.0.17` also reports `schema_version: 1`. This is an additive MQTT API v1
 field and is ignored safely by integrations that do not use it.
 
 The host list defaults to devices identified in the latest scan and can be
