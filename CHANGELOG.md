@@ -3,6 +3,22 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.1.1b1
+
+- Added lockstep MQTT API v2 support for scanner `1.1.0-rc.1`, using persistent
+  scanner UUIDs and UUID-scoped topics. MQTT API v1 backends are not compatible
+  with this beta.
+- Added first-scanner adoption, renewable Home Assistant approval leases,
+  collision rejection, stale-presence cleanup, and notifications for additional
+  or changed scanner registrations.
+- Added QoS 1 command correlation with accepted and terminal results.
+- Added scanner name, range, details, and online/scanning/offline state to the
+  panel header, including persistent scanner renaming.
+- Added a confirmed **Forget current scanner** integration option for scanner
+  replacement.
+- Updated the frontend compatibility check to require scanner `1.1.0-rc.1`,
+  MQTT API v2, and the matching `1.1.1b1` integration.
+
 ## 1.1.0
 
 - Added UI setup through Devices & services, MQTT discovery, legacy YAML

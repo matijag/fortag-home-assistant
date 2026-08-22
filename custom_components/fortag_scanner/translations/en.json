@@ -13,5 +13,16 @@
         "title": "Set up Fortag Network Scanner"
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Replace Fortag scanner",
+        "description": "Stop the old scanner before forgetting it. This clears its adoption without deleting scan data or uninstalling Fortag.",
+        "data": {
+          "forget_scanner": "Forget current scanner"
+        }
+      }
+    }
   }
 }
