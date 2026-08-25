@@ -3,6 +3,19 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.1.1b2
+
+- Updated the lockstep backend requirement to scanner `1.1.0-rc.2`.
+- Added **Use auto-detect** to remove a persisted range override safely and
+  display the newly detected private network.
+- Added actionable range errors for malformed targets, IPv6, public addresses,
+  CIDRs crossing private-network boundaries, and failed local detection.
+- Fixed false range-change errors after the backend had already persisted a
+  valid update.
+- Display only ports reported with exact Nmap state `open`; closed and filtered
+  observations remain backend history rather than appearing as open services.
+- Treat a reopened port as a fresh security exposure requiring acknowledgement.
+
 ## 1.1.1b1
 
 - Added lockstep MQTT API v2 support for scanner `1.1.0-rc.1`, using persistent

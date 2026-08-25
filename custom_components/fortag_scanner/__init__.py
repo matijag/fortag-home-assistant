@@ -355,7 +355,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             webcomponent_name="fortag-scanner-panel",
             sidebar_title="Network Scanner",
             sidebar_icon="mdi:shield-search",
-            module_url="/fortag_scanner/static/fortag-panel.js?v=1.1.1b1",
+            module_url="/fortag_scanner/static/fortag-panel.js?v=1.1.1b2",
             config={},
             require_admin=True,
         )
@@ -537,11 +537,11 @@ async def websocket_acknowledge(hass, connection, msg):
 @websocket_api.websocket_command({"type": "fortag_scanner/set_range", "range": str})
 @websocket_api.async_response
 async def websocket_set_range(hass, connection, msg):
-    await _publish_desired_config(hass, {"scan_range": msg["range"]})
     success, error = await _publish_command(hass, "set_range", {"range": msg["range"]})
     if not success:
         connection.send_error(msg["id"], "command_failed", error)
         return
+    await _publish_desired_config(hass, {"scan_range": msg["range"] or None})
     connection.send_result(msg["id"])
 
 

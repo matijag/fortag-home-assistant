@@ -44,7 +44,7 @@ DB_PATH=/app/data/scanner.db
 Start the scanner with the current beta image:
 
 ```bash
-docker pull matijag/fortag:1.1.0-rc.1
+docker pull matijag/fortag:1.1.0-rc.2
 
 docker run -d \
   --name fortag-scanner \
@@ -52,7 +52,7 @@ docker run -d \
   --restart unless-stopped \
   --env-file "$HOME/fortag/fortag.env" \
   -v "$HOME/fortag/data:/app/data" \
-  matijag/fortag:1.1.0-rc.1 \
+  matijag/fortag:1.1.0-rc.2 \
   -db /app/data/scanner.db \
   -mqtt tcp://localhost:1883
 ```
@@ -106,8 +106,8 @@ Fortag beta releases are opt-in. Enable the integration's pre-release switch in
 HACS only when testing a documented beta pair; leave it disabled to receive
 stable releases such as `1.1.0`.
 
-The current beta is a lockstep pair: HACS integration `1.1.1b1` requires
-scanner `matijag/fortag:1.1.0-rc.1`, and that scanner requires the beta
+The current beta is a lockstep pair: HACS integration `1.1.1b2` requires
+scanner `matijag/fortag:1.1.0-rc.2`, and that scanner requires the beta
 integration. MQTT API v1 components cannot be mixed with this MQTT API v2
 pair. Pin the immutable scanner tag while testing. The moving
 `matijag/fortag:beta` tag points to the newest scanner beta; beta builds never
@@ -134,8 +134,8 @@ Removing this integration does not delete the scanner's SQLite database.
 ## MQTT interface
 
 Stable integration `1.1.0` uses MQTT API v1 under `fortag/scanner`. Beta
-integration `1.1.1b1` uses MQTT API v2 UUID-scoped topics under
-`fortag/scanners/{scanner_uuid}` and requires scanner `1.1.0-rc.1`. It adopts
+integration `1.1.1b2` uses MQTT API v2 UUID-scoped topics under
+`fortag/scanners/{scanner_uuid}` and requires scanner `1.1.0-rc.2`. It adopts
 one scanner, renews that scanner's approval lease, and prevents scanning when
 Home Assistant or MQTT approval is unavailable. Additional scanners are
 reported but are not yet supported in the panel.
@@ -144,6 +144,13 @@ The beta scanner stores a persistent identity in SQLite schema version `2`.
 The panel header displays its name, scan range, and online/scanning/offline
 status; selecting the header reveals full scanner details. Scanner replacement
 is available through the integration's **Forget current scanner** option.
+
+Edit the target range and select **Use auto-detect** to remove a persisted
+override safely. Detection must succeed before the old override is removed;
+validation errors distinguish malformed, IPv6, public, and overly broad
+targets. The panel shows only ports whose latest successful scan reports exact
+state `open`. Closed and filtered observations remain historical, and reopening
+a port creates a fresh security alert.
 
 The host list defaults to devices identified in the latest scan and can be
 switched to all historically known devices. The chosen host view, sort field,
