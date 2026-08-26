@@ -1,6 +1,6 @@
 # Third-party notices
 
-The distributed `custom_components/fortag_scanner/www/fortag-panel.js` bundle
+The distributed `custom_components/fortag_scanner/www/fortag-panel-<version>.js` bundle
 contains code from the Lit project, including Lit, LitElement, Lit HTML, and
 ReactiveElement. These packages are distributed under the BSD 3-Clause License.
 

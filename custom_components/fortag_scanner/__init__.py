@@ -24,6 +24,9 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 PANEL_URL = "fortag-scanner"
+PANEL_VERSION = "1.1.1b3"
+PANEL_COMPONENT_NAME = f"fortag-scanner-panel-v{PANEL_VERSION.replace('.', '-')}"
+PANEL_MODULE_URL = f"/fortag_scanner/static/fortag-panel-{PANEL_VERSION}.js"
 DISCOVERY_INSTANCE_TOPIC = "fortag/discovery/+/instances/+"
 STATE_TOPIC = "fortag/scanners/+/state"
 PROGRESS_TOPIC = "fortag/scanners/+/progress"
@@ -352,10 +355,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await panel_custom.async_register_panel(
             hass,
             frontend_url_path=PANEL_URL,
-            webcomponent_name="fortag-scanner-panel",
+            webcomponent_name=PANEL_COMPONENT_NAME,
             sidebar_title="Network Scanner",
             sidebar_icon="mdi:shield-search",
-            module_url="/fortag_scanner/static/fortag-panel.js?v=1.1.1b2",
+            module_url=PANEL_MODULE_URL,
             config={},
             require_admin=True,
         )

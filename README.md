@@ -106,7 +106,7 @@ Fortag beta releases are opt-in. Enable the integration's pre-release switch in
 HACS only when testing a documented beta pair; leave it disabled to receive
 stable releases such as `1.1.0`.
 
-The current beta is a lockstep pair: HACS integration `1.1.1b2` requires
+The current beta is a lockstep pair: HACS integration `1.1.1b3` requires
 scanner `matijag/fortag:1.1.0-rc.2`, and that scanner requires the beta
 integration. MQTT API v1 components cannot be mixed with this MQTT API v2
 pair. Pin the immutable scanner tag while testing. The moving
@@ -134,7 +134,7 @@ Removing this integration does not delete the scanner's SQLite database.
 ## MQTT interface
 
 Stable integration `1.1.0` uses MQTT API v1 under `fortag/scanner`. Beta
-integration `1.1.1b2` uses MQTT API v2 UUID-scoped topics under
+integration `1.1.1b3` uses MQTT API v2 UUID-scoped topics under
 `fortag/scanners/{scanner_uuid}` and requires scanner `1.1.0-rc.2`. It adopts
 one scanner, renews that scanner's approval lease, and prevents scanning when
 Home Assistant or MQTT approval is unavailable. Additional scanners are

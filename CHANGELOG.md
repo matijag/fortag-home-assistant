@@ -3,6 +3,15 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.1.1b3
+
+- Load the panel from a release-specific module filename and register a
+  release-specific web component, preventing an already-open Home Assistant
+  browser session from continuing to use an older Fortag component after an
+  upgrade and restart.
+- Add subtle alternating background tones to host entries, including their
+  expanded detail rows, while preserving notification-link highlighting.
+
 ## 1.1.1b2
 
 - Updated the lockstep backend requirement to scanner `1.1.0-rc.2`.
