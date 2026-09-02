@@ -24,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 PANEL_URL = "fortag-scanner"
-PANEL_VERSION = "1.1.1b3"
+PANEL_VERSION = "1.1.1b5"
 PANEL_COMPONENT_NAME = f"fortag-scanner-panel-v{PANEL_VERSION.replace('.', '-')}"
 PANEL_MODULE_URL = f"/fortag_scanner/static/fortag-panel-{PANEL_VERSION}.js"
 DISCOVERY_INSTANCE_TOPIC = "fortag/discovery/+/instances/+"
@@ -376,17 +376,35 @@ async def _handle_alert(hass: HomeAssistant, payload: dict) -> None:
     """Create a persistent notification for a scanner alert."""
     alert_type = payload.get("type")
     mac = payload.get("mac")
+    custom_name = str(payload.get("custom_name") or "").strip()
+    if not custom_name and mac:
+        hosts = (_integration_data(hass).get("latest_state") or {}).get("hosts", [])
+        matching_host = next(
+            (
+                host
+                for host in hosts
+                if str(host.get("mac") or "").upper() == str(mac).upper()
+            ),
+            None,
+        )
+        if matching_host:
+            custom_name = str(matching_host.get("custom_name") or "").strip()
+
     if alert_type == "new_host":
         ip = payload.get("ip", "unknown")
         title = "Security Alert: New Host"
-        message = f"New device detected on network: {ip} ({mac})"
+        if custom_name:
+            message = f"New device detected on network: {custom_name} — {ip} ({mac})"
+        else:
+            message = f"New device detected on network: {ip} ({mac})"
         notification_id = f"fortag_new_host_{mac}"
         panel_link = _panel_link(mac)
     elif alert_type == "new_port":
         port = payload.get("port")
         protocol = payload.get("protocol")
         title = "Security Alert: New Port"
-        message = f"New open port detected on {mac}: {port}/{protocol}"
+        host_label = f"{custom_name} ({mac})" if custom_name else mac
+        message = f"New open port detected on {host_label}: {port}/{protocol}"
         notification_id = f"fortag_new_port_{mac}_{port}"
         panel_link = _panel_link(mac, port, protocol)
     else:

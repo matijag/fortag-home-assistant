@@ -3,6 +3,14 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.1.1b5
+
+- Re-handle notification deep links whenever Home Assistant navigates while
+  the Network Scanner panel is already open, so every notification click
+  expands, highlights, and scrolls to the relevant host or port.
+- Display the user-assigned host name in new-host and new-port notifications
+  when available, while retaining MAC and IP address fallbacks.
+
 ## 1.1.1b3
 
 - Load the panel from a release-specific module filename and register a
