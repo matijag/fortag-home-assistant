@@ -24,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 PANEL_URL = "fortag-scanner"
-PANEL_VERSION = "1.1.1b5"
+PANEL_VERSION = "1.1.1b6"
 PANEL_COMPONENT_NAME = f"fortag-scanner-panel-v{PANEL_VERSION.replace('.', '-')}"
 PANEL_MODULE_URL = f"/fortag_scanner/static/fortag-panel-{PANEL_VERSION}.js"
 DISCOVERY_INSTANCE_TOPIC = "fortag/discovery/+/instances/+"

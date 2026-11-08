@@ -3,6 +3,17 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.1.1b6
+
+- Label detected ports explicitly as TCP ports, matching the current native
+  scanner's capabilities.
+- Disable the Details action when the backend supplied no extended analysis,
+  instead of opening an empty details row.
+- Stop displaying empty service-name parentheses for ports without service
+  metadata.
+- Update scan progress wording so it no longer claims OS or service analysis
+  that the native scanner does not perform.
+
 ## 1.1.1b5
 
 - Re-handle notification deep links whenever Home Assistant navigates while
