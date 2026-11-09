@@ -3,6 +3,15 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.1.1b7
+
+- Keep scan progress visible while a scan is active and show that the displayed
+  results are from the previous completed scan.
+- Display persistent, sanitized failure or partial-result details reported by
+  compatible scanner backends, with stable error codes for log correlation.
+- Add a data-age indicator so stale results are immediately distinguishable
+  from fresh scan data.
+
 ## 1.1.1b6
 
 - Label detected ports explicitly as TCP ports, matching the current native
