@@ -18,13 +18,18 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN, SUPPORTED_MQTT_API_VERSION
+from .const import (
+    CONFIG_SCHEMA_VERSION,
+    DOMAIN,
+    PROGRESS_SCHEMA_VERSION,
+    SUPPORTED_MQTT_API_VERSION,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 PANEL_URL = "fortag-scanner"
-PANEL_VERSION = "1.1.1b7"
+PANEL_VERSION = "1.2.0b1"
 PANEL_COMPONENT_NAME = f"fortag-scanner-panel-v{PANEL_VERSION.replace('.', '-')}"
 PANEL_MODULE_URL = f"/fortag_scanner/static/fortag-panel-{PANEL_VERSION}.js"
 DISCOVERY_INSTANCE_TOPIC = "fortag/discovery/+/instances/+"
@@ -33,6 +38,7 @@ PROGRESS_TOPIC = "fortag/scanners/+/progress"
 ALERT_TOPIC = "fortag/scanners/+/alert"
 AVAILABILITY_TOPIC = "fortag/scanners/+/availability"
 COMMAND_RESULT_TOPIC = "fortag/scanners/+/command/result"
+REPORTED_CONFIG_TOPIC = "fortag/scanners/+/reported/config"
 APPROVAL_INTERVAL = 15
 APPROVAL_LEASE_SECONDS = 60
 STALE_INSTANCE_SECONDS = 60
@@ -65,6 +71,7 @@ def _integration_data(hass: HomeAssistant) -> dict:
             "approval_task": None,
             "entry": None,
             "pending_commands": {},
+            "reported_config": None,
         },
     )
 
@@ -178,6 +185,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         websocket_api.async_register_command(hass, websocket_acknowledge)
         websocket_api.async_register_command(hass, websocket_set_range)
         websocket_api.async_register_command(hass, websocket_scan_now)
+        websocket_api.async_register_command(hass, websocket_scan_target)
         data["globals_registered"] = True
 
     if DOMAIN in config:
@@ -222,6 +230,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return
         if payload.get("scanner_uuid") != scanner_uuid or payload.get("instance_id") != instance_id:
             _LOGGER.warning("Ignoring Fortag presence whose payload IDs do not match its topic")
+            return
+
+        if (
+            payload.get("api_version") != SUPPORTED_MQTT_API_VERSION
+            or payload.get("config_schema") != CONFIG_SCHEMA_VERSION
+            or payload.get("progress_schema") != PROGRESS_SCHEMA_VERSION
+        ):
+            await _publish_approval(
+                hass, scanner_uuid, instance_id, False, "incompatible_api"
+            )
+            await _notify_registration_rejected(
+                hass,
+                scanner_uuid,
+                payload.get("scanner_name", scanner_uuid),
+                "this integration requires MQTT API v3 and schema version 1",
+            )
             return
 
         now = time.monotonic()
@@ -286,8 +310,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 )
                 return
 
+        instance_changed = data["active_instance"] != instance_id
         data["active_instance"] = instance_id
         await _publish_approval(hass, scanner_uuid, instance_id, True)
+        if instance_changed:
+            await _publish_desired_config(hass)
 
     async def operational_message_received(msg) -> None:
         """Cache operational messages only for the adopted scanner."""
@@ -309,8 +336,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     payload.get("api_version"),
                     SUPPORTED_MQTT_API_VERSION,
                 )
+                return
             data["latest_state"] = payload
         elif message_type == "progress":
+            if (
+                payload.get("api_version") != SUPPORTED_MQTT_API_VERSION
+                or payload.get("schema_version") != PROGRESS_SCHEMA_VERSION
+            ):
+                _LOGGER.warning("Ignoring incompatible Fortag progress payload")
+                return
             data["latest_progress"] = payload
             hass.bus.async_fire("fortag_scanner_progress", payload)
         elif message_type == "availability":
@@ -338,10 +372,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if future and not future.done():
             future.set_result(payload)
 
+    async def reported_config_received(msg) -> None:
+        """Cache validated effective per-scanner configuration."""
+        parts = _topic_parts(msg.topic)
+        if len(parts) != 5 or parts[2] != data["adopted_uuid"]:
+            return
+        try:
+            payload = json.loads(msg.payload)
+        except (json.JSONDecodeError, TypeError):
+            _LOGGER.warning("Ignoring invalid Fortag reported configuration")
+            return
+        if (
+            payload.get("scanner_uuid") != data["adopted_uuid"]
+            or payload.get("instance_id") != data["active_instance"]
+            or payload.get("schema_version") != CONFIG_SCHEMA_VERSION
+        ):
+            return
+        data["reported_config"] = payload
+
     unsubscribers = []
     try:
         unsubscribers.append(
             await mqtt.async_subscribe(hass, DISCOVERY_INSTANCE_TOPIC, instance_received, qos=1)
+        )
+        unsubscribers.append(
+            await mqtt.async_subscribe(
+                hass, REPORTED_CONFIG_TOPIC, reported_config_received, qos=1
+            )
         )
         for topic in (ALERT_TOPIC, STATE_TOPIC, PROGRESS_TOPIC, AVAILABILITY_TOPIC):
             unsubscribers.append(
@@ -443,12 +500,12 @@ def _command_topic(hass: HomeAssistant, command: str) -> str | None:
     return f"fortag/scanners/{scanner_uuid}/command/{command}"
 
 
-async def _publish_command(
+async def _publish_command_result(
     hass: HomeAssistant, command: str, payload: dict
-) -> tuple[bool, str | None]:
+) -> tuple[dict | None, str | None]:
     topic = _command_topic(hass, command)
     if topic is None:
-        return False, "No scanner adopted"
+        return None, "No scanner adopted"
     command_id = str(uuid4())
     payload["command_id"] = command_id
     data = _integration_data(hass)
@@ -458,25 +515,49 @@ async def _publish_command(
         await mqtt.async_publish(hass, topic, json.dumps(payload), qos=1, retain=False)
         result = await asyncio.wait_for(future, timeout=15)
     except TimeoutError:
-        return False, "Scanner did not acknowledge the command"
+        return None, "Scanner did not acknowledge the command"
     finally:
         data["pending_commands"].pop(command_id, None)
     if result.get("status") != "completed":
-        return False, result.get("message", "Scanner rejected the command")
-    return True, None
+        return None, result.get("message", "Scanner rejected the command")
+    return result, None
 
 
-async def _publish_desired_config(hass: HomeAssistant, changes: dict) -> bool:
+async def _publish_command(
+    hass: HomeAssistant, command: str, payload: dict
+) -> tuple[bool, str | None]:
+    result, error = await _publish_command_result(hass, command, payload)
+    return result is not None, error
+
+
+def _scanner_options(hass: HomeAssistant, scanner_uuid: str) -> dict:
+    """Return options belonging to one scanner UUID."""
+    entry = _integration_data(hass).get("entry")
+    if entry is None:
+        return {}
+    return dict(entry.options.get("scanner_options", {}).get(scanner_uuid, {}))
+
+
+async def _publish_desired_config(
+    hass: HomeAssistant, option_override: dict | None = None
+) -> bool:
     """Publish retained desired configuration for the adopted scanner."""
     scanner_uuid = _integration_data(hass).get("adopted_uuid")
     if not scanner_uuid:
         return False
-    state = _integration_data(hass).get("latest_state") or {}
+    options = option_override or _scanner_options(hass, scanner_uuid)
     payload = {
+        "schema_version": CONFIG_SCHEMA_VERSION,
         "scanner_uuid": scanner_uuid,
-        "scanner_name": state.get("scanner_name"),
-        "scan_range": state.get("scan_range"),
-        **changes,
+        "revision": str(uuid4()),
+        "collectors": {
+            "mdns": options.get("mdns", True),
+            "ssdp": options.get("ssdp", True),
+        },
+        "automatic_targeted_scans": {
+            "dhcp": options.get("automatic_dhcp_scan", False),
+            "ipv6_ndp": options.get("automatic_ndp_scan", False),
+        },
         "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     await mqtt.async_publish(
@@ -501,6 +582,7 @@ async def websocket_get_state(hass, connection, msg):
             "state": data["latest_state"] or {"hosts": []},
             "progress": data["latest_progress"],
             "scanner": instance["payload"] if instance else None,
+            "reported_config": data["reported_config"],
         },
     )
 
@@ -524,7 +606,6 @@ async def websocket_rename_host(hass, connection, msg):
 )
 @websocket_api.async_response
 async def websocket_rename_scanner(hass, connection, msg):
-    await _publish_desired_config(hass, {"scanner_name": msg["name"]})
     success, error = await _publish_command(
         hass, "rename_scanner", {"name": msg["name"]}
     )
@@ -562,7 +643,6 @@ async def websocket_set_range(hass, connection, msg):
     if not success:
         connection.send_error(msg["id"], "command_failed", error)
         return
-    await _publish_desired_config(hass, {"scan_range": msg["range"] or None})
     connection.send_result(msg["id"])
 
 
@@ -574,3 +654,17 @@ async def websocket_scan_now(hass, connection, msg):
         connection.send_error(msg["id"], "command_failed", error)
         return
     connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {"type": "fortag_scanner/scan_target", "mac": str, "ip": str}
+)
+@websocket_api.async_response
+async def websocket_scan_target(hass, connection, msg):
+    result, error = await _publish_command_result(
+        hass, "scan_target", {"mac": msg["mac"], "ip": msg["ip"]}
+    )
+    if result is None:
+        connection.send_error(msg["id"], "command_failed", error)
+        return
+    connection.send_result(msg["id"], result.get("details", {}))

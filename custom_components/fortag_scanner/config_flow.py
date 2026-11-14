@@ -82,6 +82,9 @@ class FortagOptionsFlow(config_entries.OptionsFlow):
                 runtime = self.hass.data.get(DOMAIN, {})
                 adopted_uuid = runtime.get("adopted_uuid")
                 active_instance = runtime.get("active_instance")
+                if adopted_uuid:
+                    from homeassistant.components import mqtt
+
                 if adopted_uuid and active_instance:
                     from . import _publish_approval
 
@@ -92,6 +95,14 @@ class FortagOptionsFlow(config_entries.OptionsFlow):
                         False,
                         "scanner_forgotten",
                     )
+                if adopted_uuid:
+                    await mqtt.async_publish(
+                        self.hass,
+                        f"fortag/scanners/{adopted_uuid}/desired/config",
+                        "",
+                        qos=1,
+                        retain=True,
+                    )
                 new_data = dict(self.config_entry.data)
                 new_data.pop("scanner_uuid", None)
                 self.hass.config_entries.async_update_entry(
@@ -101,8 +112,51 @@ class FortagOptionsFlow(config_entries.OptionsFlow):
                 runtime["active_instance"] = None
                 runtime["latest_state"] = None
                 runtime["latest_progress"] = {"status": "idle", "target": ""}
-            return self.async_create_entry(title="", data={})
+                return self.async_create_entry(
+                    title="", data=dict(self.config_entry.options)
+                )
+            scanner_uuid = self.config_entry.data.get("scanner_uuid")
+            scanner_options = dict(
+                self.config_entry.options.get("scanner_options", {})
+            )
+            if scanner_uuid:
+                scanner_options[scanner_uuid] = {
+                    "mdns": user_input.get("mdns", True),
+                    "ssdp": user_input.get("ssdp", True),
+                    "automatic_dhcp_scan": user_input.get(
+                        "automatic_dhcp_scan", False
+                    ),
+                    "automatic_ndp_scan": user_input.get(
+                        "automatic_ndp_scan", False
+                    ),
+                }
+                from . import _publish_desired_config
+
+                await _publish_desired_config(
+                    self.hass, scanner_options[scanner_uuid]
+                )
+            return self.async_create_entry(
+                title="", data={"scanner_options": scanner_options}
+            )
+        scanner_uuid = self.config_entry.data.get("scanner_uuid")
+        current = self.config_entry.options.get("scanner_options", {}).get(
+            scanner_uuid, {}
+        )
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({vol.Required("forget_scanner", default=False): bool}),
+            data_schema=vol.Schema(
+                {
+                    vol.Required("mdns", default=current.get("mdns", True)): bool,
+                    vol.Required("ssdp", default=current.get("ssdp", True)): bool,
+                    vol.Required(
+                        "automatic_dhcp_scan",
+                        default=current.get("automatic_dhcp_scan", False),
+                    ): bool,
+                    vol.Required(
+                        "automatic_ndp_scan",
+                        default=current.get("automatic_ndp_scan", False),
+                    ): bool,
+                    vol.Required("forget_scanner", default=False): bool,
+                }
+            ),
         )
