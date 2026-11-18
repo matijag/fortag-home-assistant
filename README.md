@@ -44,7 +44,7 @@ DB_PATH=/app/data/scanner.db
 Start the scanner with the current beta image:
 
 ```bash
-docker pull matijag/fortag:1.1.0-rc.2
+docker pull matijag/fortag:1.2.0-rc.2
 
 docker run -d \
   --name fortag-scanner \
@@ -52,7 +52,7 @@ docker run -d \
   --restart unless-stopped \
   --env-file "$HOME/fortag/fortag.env" \
   -v "$HOME/fortag/data:/app/data" \
-  matijag/fortag:1.1.0-rc.2 \
+  matijag/fortag:1.2.0-rc.2 \
   -db /app/data/scanner.db \
   -mqtt tcp://localhost:1883
 ```
@@ -106,9 +106,9 @@ Fortag beta releases are opt-in. Enable the integration's pre-release switch in
 HACS only when testing a documented beta pair; leave it disabled to receive
 stable releases such as `1.1.0`.
 
-The current beta is a lockstep pair: HACS integration `1.1.1b3` requires
-scanner `matijag/fortag:1.1.0-rc.2`, and that scanner requires the beta
-integration. MQTT API v1 components cannot be mixed with this MQTT API v2
+The current beta is a lockstep pair: HACS integration `1.2.0b2` requires
+scanner `matijag/fortag:1.2.0-rc.2`, and that scanner requires the beta
+integration. Earlier MQTT API components cannot be mixed with this MQTT API v3
 pair. Pin the immutable scanner tag while testing. The moving
 `matijag/fortag:beta` tag points to the newest scanner beta; beta builds never
 replace `matijag/fortag:latest`.
@@ -134,11 +134,16 @@ Removing this integration does not delete the scanner's SQLite database.
 ## MQTT interface
 
 Stable integration `1.1.0` uses MQTT API v1 under `fortag/scanner`. Beta
-integration `1.1.1b3` uses MQTT API v2 UUID-scoped topics under
-`fortag/scanners/{scanner_uuid}` and requires scanner `1.1.0-rc.2`. It adopts
+integration `1.2.0b2` uses MQTT API v3 UUID-scoped topics under
+`fortag/scanners/{scanner_uuid}` and requires scanner `1.2.0-rc.2`. It adopts
 one scanner, renews that scanner's approval lease, and prevents scanning when
 Home Assistant or MQTT approval is unavailable. Additional scanners are
 reported but are not yet supported in the panel.
+
+The beta integration sends matching Home Assistant device-registry identity
+observations to the scanner. Exact MAC matches take priority; private IPv4
+matches are used only when they identify one current host. Names and supporting
+manufacturer/model evidence appear in host details with their provenance.
 
 The beta scanner stores a persistent identity in SQLite schema version `2`.
 The panel header displays its name, scan range, and online/scanning/offline

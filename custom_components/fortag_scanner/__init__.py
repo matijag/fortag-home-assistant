@@ -3,8 +3,10 @@
 import asyncio
 from contextlib import suppress
 from datetime import datetime, timezone
+import ipaddress
 import json
 import logging
+import re
 import time
 from urllib.parse import urlencode
 from uuid import uuid4
@@ -13,9 +15,12 @@ import voluptuous as vol
 from homeassistant.components import frontend, mqtt, panel_custom, websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
+from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -29,7 +34,7 @@ _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 PANEL_URL = "fortag-scanner"
-PANEL_VERSION = "1.2.0b1"
+PANEL_VERSION = "1.2.0b2"
 PANEL_COMPONENT_NAME = f"fortag-scanner-panel-v{PANEL_VERSION.replace('.', '-')}"
 PANEL_MODULE_URL = f"/fortag_scanner/static/fortag-panel-{PANEL_VERSION}.js"
 DISCOVERY_INSTANCE_TOPIC = "fortag/discovery/+/instances/+"
@@ -43,6 +48,13 @@ APPROVAL_INTERVAL = 15
 APPROVAL_LEASE_SECONDS = 60
 STALE_INSTANCE_SECONDS = 60
 PRUNE_INSTANCE_SECONDS = 24 * 60 * 60
+REGISTRY_SCHEMA_VERSION = 1
+MAX_REGISTRY_DEVICES = 256
+MAX_REGISTRY_PAYLOAD_BYTES = 128 * 1024
+_RFC1918_NETWORKS = tuple(
+    ipaddress.ip_network(network)
+    for network in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+)
 
 
 def _panel_link(mac: str, port: int | None = None, protocol: str | None = None) -> str:
@@ -72,6 +84,7 @@ def _integration_data(hass: HomeAssistant) -> dict:
             "entry": None,
             "pending_commands": {},
             "reported_config": None,
+            "registry_publish_task": None,
         },
     )
 
@@ -228,14 +241,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except (TypeError, json.JSONDecodeError):
             _LOGGER.warning("Ignoring invalid Fortag presence on %s", msg.topic)
             return
+        if not isinstance(payload, dict):
+            _LOGGER.warning("Ignoring invalid Fortag presence on %s", msg.topic)
+            return
         if payload.get("scanner_uuid") != scanner_uuid or payload.get("instance_id") != instance_id:
             _LOGGER.warning("Ignoring Fortag presence whose payload IDs do not match its topic")
             return
 
+        capabilities = payload.get("capabilities")
         if (
             payload.get("api_version") != SUPPORTED_MQTT_API_VERSION
             or payload.get("config_schema") != CONFIG_SCHEMA_VERSION
             or payload.get("progress_schema") != PROGRESS_SCHEMA_VERSION
+            or not isinstance(capabilities, list)
+            or not all(isinstance(capability, str) for capability in capabilities)
+            or "home_assistant_registry" not in capabilities
         ):
             await _publish_approval(
                 hass, scanner_uuid, instance_id, False, "incompatible_api"
@@ -244,7 +264,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass,
                 scanner_uuid,
                 payload.get("scanner_name", scanner_uuid),
-                "this integration requires MQTT API v3 and schema version 1",
+                "this integration requires MQTT API v3 schema version 1 and Home Assistant registry correlation",
             )
             return
 
@@ -315,6 +335,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await _publish_approval(hass, scanner_uuid, instance_id, True)
         if instance_changed:
             await _publish_desired_config(hass)
+            await _publish_registry_observations(hass)
 
     async def operational_message_received(msg) -> None:
         """Cache operational messages only for the adopted scanner."""
@@ -409,6 +430,45 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass, COMMAND_RESULT_TOPIC, command_result_received, qos=1
             )
         )
+
+        def schedule_registry_publish() -> None:
+            task = data.get("registry_publish_task")
+            if task and not task.done():
+                task.cancel()
+
+            async def publish_after_updates_settle() -> None:
+                try:
+                    await asyncio.sleep(1)
+                    await _publish_registry_observations(hass)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    _LOGGER.exception("Could not publish Home Assistant device identities")
+
+            data["registry_publish_task"] = hass.async_create_task(
+                publish_after_updates_settle()
+            )
+
+        def registry_updated(_event) -> None:
+            schedule_registry_publish()
+
+        def entity_ip_updated(event) -> None:
+            old_state = event.data.get("old_state")
+            new_state = event.data.get("new_state")
+            old_attributes = old_state.attributes if old_state else {}
+            new_attributes = new_state.attributes if new_state else {}
+            if any(
+                old_attributes.get(attribute) != new_attributes.get(attribute)
+                for attribute in ("ip_address", "ip", "host")
+            ):
+                schedule_registry_publish()
+
+        unsubscribers.append(
+            hass.bus.async_listen(dr.EVENT_DEVICE_REGISTRY_UPDATED, registry_updated)
+        )
+        unsubscribers.append(
+            hass.bus.async_listen(EVENT_STATE_CHANGED, entity_ip_updated)
+        )
         await panel_custom.async_register_panel(
             hass,
             frontend_url_path=PANEL_URL,
@@ -486,6 +546,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         with suppress(asyncio.CancelledError):
             await task
     data["approval_task"] = None
+    registry_task = data.get("registry_publish_task")
+    if registry_task and not registry_task.done():
+        registry_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await registry_task
+    data["registry_publish_task"] = None
     for unsubscribe in data["unsubscribers"]:
         unsubscribe()
     data["unsubscribers"] = []
@@ -570,6 +636,103 @@ async def _publish_desired_config(
     return True
 
 
+def _registry_text(value: object) -> str:
+    """Return bounded single-line registry text."""
+    return " ".join(str(value or "").split())[:256]
+
+
+def _registry_mac(value: object) -> str | None:
+    compact = re.sub(r"[^0-9A-Fa-f]", "", str(value or ""))
+    if len(compact) != 12:
+        return None
+    return ":".join(compact[index : index + 2] for index in range(0, 12, 2)).upper()
+
+
+def _registry_ipv4(value: object) -> str | None:
+    try:
+        address = ipaddress.ip_address(str(value or "").strip())
+    except ValueError:
+        return None
+    if address.version != 4 or not any(
+        address in network for network in _RFC1918_NETWORKS
+    ):
+        return None
+    return str(address)
+
+
+def _device_registry_observations(hass: HomeAssistant) -> list[dict]:
+    """Extract bounded, non-Fortag device identity observations."""
+    devices = dr.async_get(hass)
+    entities = er.async_get(hass)
+    observations = []
+    for device in sorted(devices.devices.values(), key=lambda item: item.id):
+        if any(identifier[0] == DOMAIN for identifier in device.identifiers):
+            continue
+        name = _registry_text(device.name_by_user or device.name)
+        if not name:
+            continue
+        macs = sorted(
+            {
+                normalized
+                for connection_type, value in device.connections
+                if connection_type == dr.CONNECTION_NETWORK_MAC
+                and (normalized := _registry_mac(value))
+            }
+        )[:8]
+        ips = set()
+        for entity in entities.entities.values():
+            if entity.device_id != device.id or entity.platform == DOMAIN:
+                continue
+            state = hass.states.get(entity.entity_id)
+            if state is None:
+                continue
+            for key in ("ip_address", "ip", "host"):
+                address = _registry_ipv4(state.attributes.get(key))
+                if address:
+                    ips.add(address)
+        if not macs and not ips:
+            continue
+        observations.append(
+            {
+                "device_id": device.id,
+                "name": name,
+                "manufacturer": _registry_text(device.manufacturer),
+                "model": _registry_text(device.model),
+                "mac_addresses": macs,
+                "ip_addresses": sorted(ips)[:8],
+            }
+        )
+        if len(observations) >= MAX_REGISTRY_DEVICES:
+            break
+    return observations
+
+
+async def _publish_registry_observations(hass: HomeAssistant) -> bool:
+    """Publish convergent Home Assistant registry knowledge for one scanner."""
+    scanner_uuid = _integration_data(hass).get("adopted_uuid")
+    if not scanner_uuid:
+        return False
+    payload = {
+        "schema_version": REGISTRY_SCHEMA_VERSION,
+        "scanner_uuid": scanner_uuid,
+        "revision": str(uuid4()),
+        "devices": _device_registry_observations(hass),
+        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    encoded = json.dumps(payload, separators=(",", ":"))
+    while len(encoded.encode()) > MAX_REGISTRY_PAYLOAD_BYTES and payload["devices"]:
+        payload["devices"].pop()
+        encoded = json.dumps(payload, separators=(",", ":"))
+    await mqtt.async_publish(
+        hass,
+        f"fortag/scanners/{scanner_uuid}/desired/identity",
+        encoded,
+        qos=1,
+        retain=True,
+    )
+    return True
+
+
 @websocket_api.websocket_command({"type": "fortag_scanner/get_state"})
 @websocket_api.async_response
 async def websocket_get_state(hass, connection, msg):
@@ -584,9 +747,7 @@ async def websocket_get_state(hass, connection, msg):
             "scanner": instance["payload"] if instance else None,
             "reported_config": data["reported_config"],
         },
-    )
-
-
+        )
 @websocket_api.websocket_command(
     {"type": "fortag_scanner/rename", "mac": str, "name": str}
 )

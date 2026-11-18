@@ -96,13 +96,14 @@ class FortagOptionsFlow(config_entries.OptionsFlow):
                         "scanner_forgotten",
                     )
                 if adopted_uuid:
-                    await mqtt.async_publish(
-                        self.hass,
-                        f"fortag/scanners/{adopted_uuid}/desired/config",
-                        "",
-                        qos=1,
-                        retain=True,
-                    )
+                    for suffix in ("desired/config", "desired/identity"):
+                        await mqtt.async_publish(
+                            self.hass,
+                            f"fortag/scanners/{adopted_uuid}/{suffix}",
+                            "",
+                            qos=1,
+                            retain=True,
+                        )
                 new_data = dict(self.config_entry.data)
                 new_data.pop("scanner_uuid", None)
                 self.hass.config_entries.async_update_entry(

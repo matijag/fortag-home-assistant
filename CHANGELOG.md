@@ -3,6 +3,17 @@
 All notable changes to the Fortag Home Assistant integration will be documented
 in this file.
 
+## 1.2.0b2
+
+- Publish bounded Home Assistant device-registry names, manufacturers, models,
+  MAC addresses, and private IPv4 addresses to the adopted scanner.
+- Correlate registry identities by exact MAC address first and unique current
+  IPv4 address second, with provenance visible in host details.
+- Refresh correlations when registry records or entity IP attributes change,
+  and remove them when the scanner is forgotten.
+- Require scanner `1.2.0-rc.2` and its MQTT API v3 registry-correlation
+  capability.
+
 ## 1.1.1b7
 
 - Keep scan progress visible while a scan is active and show that the displayed

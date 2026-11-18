@@ -591,13 +591,13 @@ function W(o) {
 function $(o) {
   return W({ ...o, state: !0, attribute: !1 });
 }
-const Z = "1.2.0b1", yt = `fortag-scanner-panel-v${Z.replace(/[^a-z0-9]+/g, "-")}`;
+const Z = "1.2.0b2", yt = `fortag-scanner-panel-v${Z.replace(/[^a-z0-9]+/g, "-")}`;
 var ie = Object.defineProperty, f = (o, t, e, s) => {
   for (var r = void 0, i = o.length - 1, n; i >= 0; i--)
     (n = o[i]) && (r = n(t, e, r) || r);
   return r && ie(t, e, r), r;
 };
-const At = "fortag.sortField", wt = "fortag.sortDirection", xt = "fortag.currentHostsOnly", St = 3, j = "1.2.0-rc.1", st = class st extends T {
+const At = "fortag.sortField", wt = "fortag.sortDirection", xt = "fortag.currentHostsOnly", St = 3, j = "1.2.0-rc.2", st = class st extends T {
   constructor() {
     super(...arguments), this.narrow = !1, this._scanData = null, this._progress = { status: "idle", target: "" }, this._scanner = null, this._reportedConfig = null, this._scanning = !1, this._expandedMAC = null, this._editingRange = !1, this._rangeDraft = "", this._sortBy = "ip", this._sortDirection = "asc", this._currentHostsOnly = !0, this._highlightMAC = null, this._highlightPort = null, this._highlightProtocol = null, this._deepLink = null, this._deepLinkApplied = !1, this._deepLinkSearch = null, this._handleLocationChanged = () => {
       this._refreshDeepLink(!0);
